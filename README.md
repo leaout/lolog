@@ -3,7 +3,7 @@ Write log without lock.
 ## Build & Install
 ./build.sh debug/release
 make insall
-##Example
+## Example
 ```c++
 #include "Lolog.h"
 using namespace lolog;
