@@ -1,8 +1,10 @@
 # lolog
 Write log without lock.
 ## Build & Install
+```bash
 ./build.sh debug/release
 make insall
+```
 ## Example
 ```c++
 #include "Lolog.h"
