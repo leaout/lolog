@@ -1,11 +1,16 @@
 # lolog
-Write log without lock.
+Fast, Compiled, Async, C++ logging lib.
 ## Build & Install
 ```bash
-./build.sh debug/release
+git clone https://github.com/leaout/lolog.git
+cd lolog && ./build.sh debug/release
 make insall
 ```
-## Example
+## Platforms
+- Linux, FreeBSD, OpenBSD, Solaris, AIX
+- Windows (msvc 2008+, cygwin)
+## Examples
+### Basic usage
 ```c++
 #include "Lolog.h"
 using namespace lolog;
@@ -36,4 +41,80 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
+```
+### Set stdout print
+```c++
+#include "Lolog.h"
+using namespace lolog;
+
+int main(int argc, char* argv[]) {
+    lolog::init_logging(argv[0], 5, 200 << 20);
+    lolog::set_log_level("Debug");
+    lolog::set_std_out(true);
+
+    debug("this is debug");
+    info("this is info");
+    warn("this is warn");
+    error("this is error");
+    fatal("this is fatal");
+    return 0;
+}
+```
+### Set print source code line
+```c++
+#include "Lolog.h"
+using namespace lolog;
+
+int main(int argc, char* argv[]) {
+    lolog::init_logging(argv[0], 5, 200 << 20);
+    lolog::set_log_level("Debug");
+    lolog::set_std_out(true);
+    lolog::set_print_file_line(true);
+
+    debug("this is debug");
+    info("this is info");
+    warn("this is warn");
+    error("this is error");
+    fatal("this is fatal");
+    return 0;
+}
+```
+### Set color 
+```c++
+#include "Lolog.h"
+using namespace lolog;
+
+int main(int argc, char* argv[]) {
+    lolog::init_logging(argv[0], 5, 200 << 20);
+    lolog::set_log_level("Debug");
+    lolog::set_color(true);
+
+    debug("this is debug");
+    INFO("this is info");
+    WARN("this is warn");
+    ERROR("this is error");
+    FATAL("this is fatal");
+    return 0;
+}
+```
+
+![image](color.jpg)  
+### Set log file name format
+```c++
+#include "Lolog.h"
+using namespace lolog;
+
+int main(int argc, char* argv[]) {
+    lolog::init_logging(argv[0], 5, 200 << 20);
+    lolog::set_log_level("Debug");
+    lolog::set_color(true);
+    lolog::set_log_formate(0);
+
+    debug("this is debug");
+    INFO("this is info");
+    WARN("this is warn");
+    ERROR("this is error");
+    FATAL("this is fatal");
+    return 0;
+}
 ```
