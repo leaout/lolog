@@ -13,6 +13,12 @@ add_library(${PROJECT_NAME} SHARED ${DIR_SRCS} ${HEADERS})
 find_package(Threads)
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 
+include_directories(${CMAKE_SOURCE_DIR})
+link_directories(${CMAKE_BINARY_DIR})
+aux_source_directory(./bench DIR_BENCH)
+add_executable(bench ${DIR_BENCH})
+target_link_libraries(bench -llolog)
+
 option(BUILD_TEST "Set to build unit test"  OFF)
 if (BUILD_TEST)
     add_subdirectory(test)

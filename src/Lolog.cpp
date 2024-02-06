@@ -16,16 +16,15 @@ namespace lolog {
 
     LogLevel g_log_level = LogLevel::Error;
     bool g_color = false;
-    bool g_std_out = false;
     bool g_print_line = false;
 
     void init_logging(const char *log_path_name, int log_remain_counts, int log_file_size) {
 
         kULog.open_log_file(log_path_name);
 
-        g_color = true;
+        g_color = false;
 
-        kULog.m_std_out = true;
+        kULog.m_std_out = false;
 
         kULog.m_inc_log_size = log_file_size;
 
@@ -42,7 +41,7 @@ namespace lolog {
     }
 
     void set_std_out(bool set) {
-        g_std_out = set;
+        kULog.m_std_out = set;
     }
 
     void set_print_file_line(bool set) {
