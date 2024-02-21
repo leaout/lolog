@@ -17,7 +17,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 link_directories(${CMAKE_BINARY_DIR})
 aux_source_directory(./bench DIR_BENCH)
 add_executable(bench ${DIR_BENCH})
-target_link_libraries(bench -llolog)
+target_link_libraries(bench  ${CMAKE_THREAD_LIBS_INIT})
 
 option(BUILD_TEST "Set to build unit test"  OFF)
 if (BUILD_TEST)

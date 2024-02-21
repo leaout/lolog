@@ -1,5 +1,5 @@
 # lolog
-Fast, Compiled, Async, C++ logging lib.
+Fast, Compiled/Header-Only, Async, C++ logging lib.
 ## Build & Install
 ```bash
 git clone https://github.com/leaout/lolog.git

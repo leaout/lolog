@@ -28,7 +28,7 @@ fi
 
 if [ $1 = "release" ]; then
   cd ${release_dir}
-  cmake -DCMAKE_BUILD_TYPE=Release  .. && cmake --build . -- -j $CPU_CORES
+  cmake -DCMAKE_BUILD_TYPE=Release  -DBUILD_TEST=ON .. && cmake --build . -- -j $CPU_CORES
 else
   cd ${debug_dir}
   cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TEST=ON .. && cmake --build . -- -j $CPU_CORES

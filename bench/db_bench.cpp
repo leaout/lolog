@@ -10,7 +10,8 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
-#include "include/Lolog.h"
+// #include "include/Lolog.h"
+#include "include/Lolog-Inl.h"
 
 using namespace std;
 class BenchMark {

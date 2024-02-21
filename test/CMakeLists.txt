@@ -3,6 +3,7 @@ project(test_lolog)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/test)
 link_directories(${CMAKE_SOURCE_DIR}/cmake-build-debug)
+link_directories(${CMAKE_SOURCE_DIR}/cmake-build-release)
 
 find_path(GTEST_HEADER NAMES gtest/gtest.h)
 find_library(GTEST_LIB NAMES gtest)
