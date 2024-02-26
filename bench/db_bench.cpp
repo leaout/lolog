@@ -54,8 +54,8 @@ static std::string_view TrimSpace(std::string_view s) {
 
 //BENCHMARK_MAIN();
 void print_environment() {
-    std::fprintf(stderr, "Base DB:    version %d.%d\n", 4,
-                 0);
+    std::fprintf(stderr, "Lolog:    version %d.%d\n", 1,
+                 2);
 
 #if defined(__linux)
     time_t now = time(nullptr);

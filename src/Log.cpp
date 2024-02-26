@@ -78,10 +78,15 @@ namespace lolog {
     }
 
     long long ULog::get_current_thread_id() {
-        std::ostringstream oss;
-        oss << std::this_thread::get_id();
-        std::string stid = oss.str();
-        return std::stoll(stid);
+        long long tid = 0;
+#ifdef _WIN32
+#include <process.h>
+        tid = GetCurrentThreadId();
+#else
+#include <pthread.h>
+        tid = pthread_self();
+#endif
+        return tid;
     }
 
     std::string exec(const char *cmd) {

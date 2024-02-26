@@ -521,6 +521,29 @@ namespace lolog {
         return static_cast<std::underlying_type_t<E>>(enumerator);
     }
 
+    std::string exec(const char *cmd) {
+        std::array<char, 128> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+        if (!pipe) {
+            throw std::runtime_error("popen() failed!");
+        }
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        return result;
+    }
+
+    string get_path(const string full_file_path) {
+        std::string::size_type npos = full_file_path.rfind("/");
+        if (npos == std::string::npos) {
+            return "./";
+
+        } else {
+            return full_file_path.substr(0, npos + 1);
+        }
+    }
+
     class ULog {
     public:
         enum class ColorCode {
@@ -534,41 +557,187 @@ namespace lolog {
             WHITE = 37
         };
     public:
-        ULog();
+        ULog(){
+            m_is_running = false;
 
-        ~ULog();
+            m_std_out = false;
 
-        void set_log_file_type(LogFileType nLogFileType = LogFileType::DateTime);
+            m_log_file_type = LogFileType::DateTime;
 
-        bool open_log_file(const char *log_path_name);
+            m_buffer_send = nullptr;
+        }
 
-        ULog &add_log(const char *pszFmt, ...);
+        ~ULog() {
+            for (auto &it : m_thread_log_buffer) {
+                delete (it.second);
+            }
 
-        ULog &flush();
+            m_log = nullptr;
+        }
 
-        void close_log_file();
+        void set_log_file_type(LogFileType nLogFileType/*=TyLogType_DateTime*/ ) {
+            m_log_file_type = nLogFileType;
+        }
 
-        ULog &operator<<(char *pszData);
 
-        ULog &operator<<(const char *pszData);
+        string get_log_file_name() {
+            static int log_sequence_no = 0;
 
-        ULog &operator<<(unsigned int nData);
+            string strLogFileName = m_file_name_template;
+            switch (m_log_file_type) {
+                case LogFileType::DateTime: {
+                    char szTime[32] = {0};
+                    time_t timeNow = time(nullptr);
 
-        ULog &operator<<(unsigned long nData);
+                    strftime(szTime, 32, "-%Y%m%d-%H%M%S.log", localtime(&timeNow));
+                    strLogFileName += szTime;
+                }
+                    break;
 
-        ULog &operator<<(char cData);
+                case LogFileType::Date: {
+                    char szTime[32] = {0};
+                    time_t timeNow = time(nullptr);
 
-        ULog &operator<<(int nData);
+                    strftime(szTime, 32, "-%Y%m%d.log", localtime(&timeNow));
+                    strLogFileName += szTime;
+                }
+                    break;
 
-        ULog &operator<<(long nData);
+                default: {
+                    char szSn[32] = {0};
+                    sprintf(szSn, "-%02d.log", log_sequence_no);
+                    strLogFileName += szSn;
 
-        ULog &operator<<(long long nData);
+                    if (++log_sequence_no > 50)
+                        log_sequence_no = 0;
+                }
+                    break;
+            }
+            return strLogFileName;
+        }
 
-        ULog &operator<<(float fData);
+        long long get_current_thread_id() {
+            long long tid = 0;
+#ifdef _WIN32
+#include <process.h>
+            tid = GetCurrentThreadId();
+#else
+#include <pthread.h>
+            tid = pthread_self();
+#endif
+            return tid;
+        }
 
-        ULog &operator<<(double fData);
+        bool open_log_file(const char *log_path_name) {
+            static bool bIsRunThread = true;
+            m_is_running = true;
 
-        ULog &operator<<(string &strData);
+            m_file_name_template = log_path_name;
+            if (m_file_name_template.compare(m_file_name_template.size() - 4, 4, ".log") == 0)
+                m_file_name_template.erase(m_file_name_template.size() - 4, 4);
+
+            close_log_file();
+            if (bIsRunThread) {
+
+                std::thread th(bind(&ULog::save_log_file, this));
+                th.detach();
+                bIsRunThread = false;
+            }
+            auto path = get_path(m_file_name_template);
+#ifdef __linux
+             //remove old log when restarting
+             string cmd = "cd " + path + " && rm -f `ls -t *.log | awk 'NR>" + to_string(m_log_remain_counts) + "'`";
+             try {
+                 exec(cmd.data());
+             } catch (exception e) {
+             }
+#endif
+            locale::global(locale(""));
+            string log_file_name = get_log_file_name();
+            if (m_log_file_type == LogFileType::Date)
+                m_file_log.open(log_file_name.c_str(), ios::binary | ios::app);
+            else
+                m_file_log.open(log_file_name.c_str(), ios::binary | ios::trunc);
+
+            m_log_list.emplace_back(log_file_name);
+
+            locale::global(locale("C"));
+            return m_file_log.is_open();
+        }
+
+
+        void close_log_file() {
+            if (m_file_log.is_open())
+                m_file_log.close();
+        }
+
+        ULog &add_log(const char *pszFmt, ...) {
+            va_list argptr;
+
+            va_start(argptr, pszFmt);
+            add_logvar_list((char *) pszFmt, argptr);
+            va_end(argptr);
+
+            return *this;
+        }
+
+        ULog &add_logvar_list(char *pszFmt, va_list argptr) {
+            CThreadLogBuffer &thread_log_buffer = get_log_buffer_by_id(get_current_thread_id());
+            thread_log_buffer.add(pszFmt, argptr);
+
+            return *this;
+        }
+
+        ULog &operator<<(char *pszData) {
+            return add_log("%s", pszData);
+        }
+
+        ULog &operator<<(const char *pszData) {
+            return add_log("%s", pszData);
+        }
+
+        ULog &operator<<(string &strData) {
+            return add_log("%s", strData.c_str());
+        }
+
+        ULog &operator<<(unsigned int nData) {
+            return add_log("%d", nData);
+        }
+
+        ULog &operator<<(unsigned long nData) {
+            return add_log("%ld", nData);
+        }
+
+        ULog &operator<<(char cData) {
+            return add_log("%c", cData);
+        }
+
+        ULog &operator<<(int nData) {
+            return add_log("%d", nData);
+        }
+
+        ULog &operator<<(long nData) {
+            return add_log("%ld", nData);
+        }
+
+        ULog &operator<<(long long nData) {
+            return add_log("%lld", nData);
+        }
+
+        ULog &operator<<(float fData) {
+            return add_log("%f", fData);
+        }
+
+        ULog &operator<<(double fData) {
+            return add_log("%f", fData);
+        }
+
+        ULog &flush() {
+            CThreadLogBuffer &ThreadLogBuffer = get_log_buffer_by_id(get_current_thread_id());
+            ThreadLogBuffer.flush();
+
+            return *this;
+        }
 
         ULog &operator<<(ULog &(*op)(ULog &)) {
             return (*op)(*this);
@@ -576,15 +745,9 @@ namespace lolog {
 
         static ULog &get_instance();
 
-        string get_log_file_name();
-
-        long long get_current_thread_id();
-
         void set_color(ColorCode code);
 
         void reset_color();
-
-        ULog &add_logvar_list(char *pszFmt, va_list argptr);
 
     public:
 
@@ -666,7 +829,7 @@ namespace lolog {
 
     extern ULog &kULog;
 
-        ULog *ULog::m_log = nullptr;
+    ULog *ULog::m_log = nullptr;
 
     ULog &kULog = ULog::get_instance();
 
@@ -675,208 +838,6 @@ namespace lolog {
             m_log = new ULog;
 
         return *m_log;
-    }
-
-    ULog::ULog() {
-        m_is_running = false;
-
-        m_std_out = false;
-
-        m_log_file_type = LogFileType::DateTime;
-
-        m_buffer_send = nullptr;
-    }
-
-    ULog::~ULog() {
-
-        for (auto &it : m_thread_log_buffer) {
-            delete (it.second);
-        }
-
-        m_log = nullptr;
-    }
-
-
-    void ULog::set_log_file_type(LogFileType nLogFileType/*=TyLogType_DateTime*/ ) {
-        m_log_file_type = nLogFileType;
-    }
-
-
-    string ULog::get_log_file_name() {
-        static int log_sequence_no = 0;
-
-        string strLogFileName = m_file_name_template;
-        switch (m_log_file_type) {
-            case LogFileType::DateTime: {
-                char szTime[32] = {0};
-                time_t timeNow = time(nullptr);
-
-                strftime(szTime, 32, "-%Y%m%d-%H%M%S.log", localtime(&timeNow));
-                strLogFileName += szTime;
-            }
-                break;
-
-            case LogFileType::Date: {
-                char szTime[32] = {0};
-                time_t timeNow = time(nullptr);
-
-                strftime(szTime, 32, "-%Y%m%d.log", localtime(&timeNow));
-                strLogFileName += szTime;
-            }
-                break;
-
-            default: {
-                char szSn[32] = {0};
-                sprintf(szSn, "-%02d.log", log_sequence_no);
-                strLogFileName += szSn;
-
-                if (++log_sequence_no > 50)
-                    log_sequence_no = 0;
-            }
-                break;
-        }
-        return strLogFileName;
-    }
-
-    long long ULog::get_current_thread_id() {
-        std::ostringstream oss;
-        oss << std::this_thread::get_id();
-        std::string stid = oss.str();
-        return std::stoll(stid);
-    }
-
-    std::string exec(const char *cmd) {
-        std::array<char, 128> buffer;
-        std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-        if (!pipe) {
-            throw std::runtime_error("popen() failed!");
-        }
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data();
-        }
-        return result;
-    }
-
-    string get_path(const string full_file_path) {
-        std::string::size_type npos = full_file_path.rfind("/");
-        if (npos == std::string::npos) {
-            return "./";
-
-        } else {
-            return full_file_path.substr(0, npos + 1);
-        }
-    }
-
-    bool ULog::open_log_file(const char *log_path_name) {
-        static bool bIsRunThread = true;
-        m_is_running = true;
-
-        m_file_name_template = log_path_name;
-        if (m_file_name_template.compare(m_file_name_template.size() - 4, 4, ".log") == 0)
-            m_file_name_template.erase(m_file_name_template.size() - 4, 4);
-
-        close_log_file();
-        if (bIsRunThread) {
-
-            std::thread th(bind(&ULog::save_log_file, this));
-            th.detach();
-            bIsRunThread = false;
-        }
-        auto path = get_path(m_file_name_template);
-#ifdef __linux
-        //remove old log when restarting
-        string cmd = "cd " + path + " && rm -f `ls -t *.log | awk 'NR>" + to_string(m_log_remain_counts) + "'`";
-        try {
-            exec(cmd.data());
-        } catch (exception e) {
-        }
-#endif
-        locale::global(locale(""));
-        string log_file_name = get_log_file_name();
-        if (m_log_file_type == LogFileType::Date)
-            m_file_log.open(log_file_name.c_str(), ios::binary | ios::app);
-        else
-            m_file_log.open(log_file_name.c_str(), ios::binary | ios::trunc);
-
-        m_log_list.emplace_back(log_file_name);
-
-        locale::global(locale("C"));
-        return m_file_log.is_open();
-    }
-
-
-    void ULog::close_log_file() {
-        if (m_file_log.is_open())
-            m_file_log.close();
-    }
-
-    ULog &ULog::add_log(const char *pszFmt, ...) {
-        va_list argptr;
-
-        va_start(argptr, pszFmt);
-        add_logvar_list((char *) pszFmt, argptr);
-        va_end(argptr);
-
-        return *this;
-    }
-
-    ULog &ULog::add_logvar_list(char *pszFmt, va_list argptr) {
-        CThreadLogBuffer &thread_log_buffer = get_log_buffer_by_id(get_current_thread_id());
-        thread_log_buffer.add(pszFmt, argptr);
-
-        return *this;
-    }
-
-    ULog &ULog::operator<<(char *pszData) {
-        return add_log("%s", pszData);
-    }
-
-    ULog &ULog::operator<<(const char *pszData) {
-        return add_log("%s", pszData);
-    }
-
-    ULog &ULog::operator<<(string &strData) {
-        return add_log("%s", strData.c_str());
-    }
-
-    ULog &ULog::operator<<(unsigned int nData) {
-        return add_log("%d", nData);
-    }
-
-    ULog &ULog::operator<<(unsigned long nData) {
-        return add_log("%ld", nData);
-    }
-
-    ULog &ULog::operator<<(char cData) {
-        return add_log("%c", cData);
-    }
-
-    ULog &ULog::operator<<(int nData) {
-        return add_log("%d", nData);
-    }
-
-    ULog &ULog::operator<<(long nData) {
-        return add_log("%ld", nData);
-    }
-
-    ULog &ULog::operator<<(long long nData) {
-        return add_log("%lld", nData);
-    }
-
-    ULog &ULog::operator<<(float fData) {
-        return add_log("%f", fData);
-    }
-
-    ULog &ULog::operator<<(double fData) {
-        return add_log("%f", fData);
-    }
-
-    ULog &ULog::flush() {
-        CThreadLogBuffer &ThreadLogBuffer = get_log_buffer_by_id(get_current_thread_id());
-        ThreadLogBuffer.flush();
-
-        return *this;
     }
 
     ULog::CThreadLogBuffer &ULog::get_log_buffer_by_id(long long thread_id) {

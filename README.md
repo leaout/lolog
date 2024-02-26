@@ -1,5 +1,5 @@
 # lolog
-Fast, Compiled/Header-Only, Async, C++ logging lib.
+Fast, Compiled/Header-Only, Async,Multi-Style C++ logging lib.
 ## Build & Install
 ```bash
 git clone https://github.com/leaout/lolog.git
@@ -117,4 +117,13 @@ int main(int argc, char* argv[]) {
     FATAL("this is fatal");
     return 0;
 }
+```
+
+## Benchmark
+```
+Lolog:      version 1.2
+Date:       Mon Feb 26 14:33:05 2024
+CPU:        4 * Intel(R) Core(TM) i5-8400 CPU @ 2.80GHz
+CPUCache:   9216 KB
+bench_lolog                      : 292033 op/s total:100000 timecost:342427 μs
 ```
