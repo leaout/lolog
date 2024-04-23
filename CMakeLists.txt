@@ -19,7 +19,6 @@ aux_source_directory(./bench DIR_BENCH)
 add_executable(bench ${DIR_BENCH})
 target_link_libraries(bench  ${CMAKE_THREAD_LIBS_INIT})
 
-option(BUILD_TEST "Set to build unit test"  OFF)
 find_package(GTest)
 if(GTest_FOUND)
     add_subdirectory(test)
