@@ -27,5 +27,5 @@ use_cxx17()
 set(UNIT_TEST_PROJECT unit-test)
 file(GLOB TEST_ULTIPA_SRCS "test_*.cpp")
 add_executable(${UNIT_TEST_PROJECT} main.cpp ${TEST_ULTIPA_SRCS})
-
+add_dependencies(${UNIT_TEST_PROJECT} lolog)
 target_link_libraries(${UNIT_TEST_PROJECT} ${GTEST_MAIN_LIB} ${GTEST_LIB} -lpthread -llolog)

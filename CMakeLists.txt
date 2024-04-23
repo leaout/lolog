@@ -20,10 +20,9 @@ add_executable(bench ${DIR_BENCH})
 target_link_libraries(bench  ${CMAKE_THREAD_LIBS_INIT})
 
 option(BUILD_TEST "Set to build unit test"  OFF)
-if (BUILD_TEST)
+find_package(GTest)
+if(GTest_FOUND)
     add_subdirectory(test)
-else()
-    message("do not build unit test")
 endif()
 
 #install
