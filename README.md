@@ -7,7 +7,7 @@ cd lolog && ./build.sh debug/release
 make insall
 ```
 ## Platforms
-- Linux, FreeBSD, OpenBSD, Solaris, AIX
+- Linux
 - Windows (msvc 2008+, cygwin)
 ## Examples
 ### Basic usage
