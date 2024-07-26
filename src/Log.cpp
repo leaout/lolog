@@ -31,7 +31,7 @@ namespace lolog {
         for (auto &it : m_thread_log_buffer) {
             delete (it.second);
         }
-
+        m_is_running = false;
         m_log = nullptr;
     }
 

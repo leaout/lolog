@@ -505,8 +505,8 @@ public:
         for (auto &it : m_thread_log_buffer) {
             delete (it.second);
         }
-
-        m_log = nullptr;
+        m_is_running = false;
+        // m_log = nullptr;
     }
 
     void set_log_file_type(LogFileType nLogFileType /*=TyLogType_DateTime*/) { m_log_file_type = nLogFileType; }
@@ -662,7 +662,7 @@ public:
 
 private:
     ofstream m_file_log;
-    static ULog *m_log;
+    // ULog *m_log = nullptr;
     string m_file_name_template;
     LogFileType m_log_file_type;
 
@@ -721,14 +721,12 @@ static ULog &pid(ULog &lftLog) {
 
 extern ULog &kULog;
 
-ULog *ULog::m_log = nullptr;
-
 ULog &kULog = ULog::get_instance();
 
 ULog &ULog::get_instance() {
-    if (m_log == nullptr) m_log = new ULog;
+    static ULog instance;
 
-    return *m_log;
+    return instance;
 }
 
 ULog::CThreadLogBuffer &ULog::get_log_buffer_by_id(long long thread_id) {
@@ -751,7 +749,7 @@ void ULog::save_log_file() {
 
     map<long long, bool> large_log_mark;
 
-    while (m_is_running && (m_log != nullptr)) {
+    while (m_is_running) {
         if (m_thread_log_buffer.empty()) {
             std::this_thread::sleep_for(chrono::microseconds(100));
             continue;

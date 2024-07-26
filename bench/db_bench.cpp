@@ -14,6 +14,8 @@
 #include "include/Lolog-Inl.h"
 
 using namespace std;
+using namespace lolog;
+
 class BenchMark {
 public:
     BenchMark() {
@@ -21,8 +23,8 @@ public:
     }
 
     void init() {
-        lolog::init_logging("test.log",5,200<<20);
-        lolog::set_log_level("Info");
+        init_logging("test.log",5,200<<20);
+        set_log_level("Info");
     }
 
     ~BenchMark() {
