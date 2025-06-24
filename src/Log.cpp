@@ -27,11 +27,16 @@ namespace lolog {
     }
 
     ULog::~ULog() {
+        m_is_running = false;
 
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        if (m_write_thread.joinable())
+                m_write_thread.join();
+                
         for (auto &it : m_thread_log_buffer) {
             delete (it.second);
         }
-        m_is_running = false;
+
         m_log = nullptr;
     }
 
@@ -124,7 +129,7 @@ namespace lolog {
         if (bIsRunThread) {
 
             std::thread th(bind(&ULog::save_log_file, this));
-            th.detach();
+            th.swap(m_write_thread);
             bIsRunThread = false;
         }
         auto path = get_path(m_file_name_template);

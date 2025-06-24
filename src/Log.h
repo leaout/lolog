@@ -126,6 +126,8 @@ namespace lolog {
         int m_log_remain_counts = 5;
         list<string> m_log_list;
 
+        std::thread m_write_thread;
+
     private:
         ofstream m_file_log;
         static ULog *m_log;

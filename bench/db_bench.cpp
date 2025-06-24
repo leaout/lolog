@@ -164,6 +164,6 @@ int main(int argc, char *argv[]) {
     for(auto&fn : bench_funcs){
         fn();
     }
-
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
     return 0;
 }
