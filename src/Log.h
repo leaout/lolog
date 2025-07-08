@@ -17,6 +17,12 @@
 #include <unordered_map>
 #include <cstring>
 #include <mutex>
+// fmt
+#define FMT_HEADER_ONLY
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/printf.h>
+#include <fmt/xchar.h>
 
 using namespace std;
 
@@ -69,33 +75,20 @@ namespace lolog {
 
         bool open_log_file(const char *log_path_name);
 
-        ULog &add_log(const char *pszFmt, ...);
-
+        ULog &add_log(const char *pszFmt, ...); 
+        
+        // fmt format
+        template <typename... Args>
+        ULog &add_log(const char *format, const Args &...args){
+            get_log_buffer_by_id(get_current_thread_id()).add(format, args...);
+            return *this;
+        }
         ULog &flush();
 
         void close_log_file();
 
-        ULog &operator<<(char *pszData);
-
-        ULog &operator<<(const char *pszData);
-
-        ULog &operator<<(unsigned int nData);
-
-        ULog &operator<<(unsigned long nData);
-
-        ULog &operator<<(char cData);
-
-        ULog &operator<<(int nData);
-
-        ULog &operator<<(long nData);
-
-        ULog &operator<<(long long nData);
-
-        ULog &operator<<(float fData);
-
-        ULog &operator<<(double fData);
-
-        ULog &operator<<(string &strData);
+        template <class T>
+        ULog &operator<<(T data) { return add_log("{}", data); }
 
         ULog &operator<<(ULog &(*op)(ULog &)) {
             return (*op)(*this);
@@ -146,7 +139,10 @@ namespace lolog {
 
             bool operator==(long long llThread);
 
-            void add(const char *pszFmt, va_list argptr);
+            template <typename... Args>
+            void add(const char *format, const Args &...args){
+                m_current_log += fmt::format(format, args...);
+            }
 
             bool flush();
 
@@ -186,12 +182,6 @@ namespace lolog {
         return lftLog << szTime;
     }
 
-    static ULog &pid(ULog &lftLog) {
-        std::ostringstream oss;
-        oss << std::this_thread::get_id();
-        std::string stid = oss.str();
-        return lftLog << std::stoul(stid);
-    }
 
     extern ULog &kULog;
 }

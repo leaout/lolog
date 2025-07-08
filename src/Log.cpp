@@ -160,67 +160,6 @@ namespace lolog {
             m_file_log.close();
     }
 
-    ULog &ULog::add_log(const char *pszFmt, ...) {
-        va_list argptr;
-
-        va_start(argptr, pszFmt);
-        add_logvar_list((char *) pszFmt, argptr);
-        va_end(argptr);
-
-        return *this;
-    }
-
-    ULog &ULog::add_logvar_list(char *pszFmt, va_list argptr) {
-        CThreadLogBuffer &thread_log_buffer = get_log_buffer_by_id(get_current_thread_id());
-        thread_log_buffer.add(pszFmt, argptr);
-
-        return *this;
-    }
-
-    ULog &ULog::operator<<(char *pszData) {
-        return add_log("%s", pszData);
-    }
-
-    ULog &ULog::operator<<(const char *pszData) {
-        return add_log("%s", pszData);
-    }
-
-    ULog &ULog::operator<<(string &strData) {
-        return add_log("%s", strData.c_str());
-    }
-
-    ULog &ULog::operator<<(unsigned int nData) {
-        return add_log("%d", nData);
-    }
-
-    ULog &ULog::operator<<(unsigned long nData) {
-        return add_log("%ld", nData);
-    }
-
-    ULog &ULog::operator<<(char cData) {
-        return add_log("%c", cData);
-    }
-
-    ULog &ULog::operator<<(int nData) {
-        return add_log("%d", nData);
-    }
-
-    ULog &ULog::operator<<(long nData) {
-        return add_log("%ld", nData);
-    }
-
-    ULog &ULog::operator<<(long long nData) {
-        return add_log("%lld", nData);
-    }
-
-    ULog &ULog::operator<<(float fData) {
-        return add_log("%f", fData);
-    }
-
-    ULog &ULog::operator<<(double fData) {
-        return add_log("%f", fData);
-    }
-
     ULog &ULog::flush() {
         CThreadLogBuffer &ThreadLogBuffer = get_log_buffer_by_id(get_current_thread_id());
         ThreadLogBuffer.flush();
@@ -331,16 +270,6 @@ namespace lolog {
     ULog::CThreadLogBuffer::~CThreadLogBuffer() {
         delete m_circle_buffer;
         m_circle_buffer = nullptr;
-    }
-
-    void ULog::CThreadLogBuffer::add(const char *pszFmt, va_list argptr) {
-        if (pszFmt != nullptr) {
-            char szBuf[10240] = {0};
-            int ret = vsnprintf(szBuf, 10240, pszFmt, argptr);
-            int size = ret > 10240 ? 10240 : ret;
-            m_current_log.append(szBuf, size);
-//    m_strcurrent_log += szBuf;
-        }
     }
 
     bool ULog::CThreadLogBuffer::flush() {

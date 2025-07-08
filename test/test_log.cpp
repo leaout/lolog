@@ -29,24 +29,21 @@ protected:
 TEST_F(LologTest, print_log) {
     using namespace lolog;
     debug("this is debug");
-    DEBUGEX("this is debug");
-    LODEBUG() <<"this is macro debug";
+
+    LODEBUG("this is macro debug");
 
     info("this is info");
-    INFOEX("this is info");
-    LOINFO() <<"this is macro info";
+    LOINFO("this is macro info");
 
     warn("this is warn");
-    WARNEX("this is warn");
-    LOWARN() <<"this is macro warn";
+    LOWARN("this is macro warn");
 
     error("this is error");
-    ERROREX("this is error");
-    LOERROR()<< "this is macro error";
+
+    LOERROR("this is macro error");
 
     fatal("this is fatal");
-    FATALEX("this is fatal");
-    LOFATAL() << "this is macro fatal";
+    LOFATAL("this is macro fatal");
 }
 
 TEST_F(LologTest, batct_log) {
@@ -54,27 +51,27 @@ TEST_F(LologTest, batct_log) {
     using namespace lolog;
     std::thread th1([=]() {
         for (int i = 0; i < print_cout; ++i) {
-            LOINFO() << "UINFO---------testtesttesttesttesttesttesttest--------------------------:" << i;
+            LOINFO("UINFO---------testtesttesttesttesttesttesttest--------------------------:{}",i);
             lolog::info("UINFO-----------------------------------");
         }
     });
     std::thread th2([=]() {
         for (int i = 0; i < print_cout; ++i) {
-            LODEBUG() << "UDEBUG-----------------------------------" << i;
+            LODEBUG("UDEBUG-----------------------------------{}",i);
             lolog::debug("UDEBUG-----------------------------------");
         }
 
     });
     std::thread th3([=]() {
         for (int i = 0; i < print_cout; ++i) {
-            LOERROR() << "UERROR-----------------------------------" << i;
+            LOERROR("UERROR-----------------------------------{}",i);
             lolog::error("UERROR-----------------------------------");
         }
 
     });
     std::thread th4([=]() {
         for (int i = 0; i < print_cout; ++i) {
-            LOFATAL() << "UFATAL--------------------------------------" << i;
+            LOFATAL("UFATAL--------------------------------------{}",i);
             lolog::fatal("UFATAL-----------------------------------");
         }
 

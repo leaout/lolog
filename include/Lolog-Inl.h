@@ -610,7 +610,6 @@ public:
         return *this;
     }
 
-
     template <class T>
     ULog &operator<<(T data) { return add_log("{}", data); }
 
@@ -1053,16 +1052,16 @@ inline void fatal(const char *fmt, Args... args) {
 }
 
 #ifdef __linux
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __LOFILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #else
-#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#define __LOFILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #endif
 
 } // namespace lolog
 
-#define LODEBUG(param, args...) lolog::debugex(__FILENAME__, __LINE__, param, ##args)
-#define LOINFO(param, args...) lolog::infoex(__FILENAME__, __LINE__, param, ##args)
-#define LOWARN(param, args...) lolog::warnex(__FILENAME__, __LINE__, param, ##args)
-#define LOERROR(param, args...) lolog::errorex(__FILENAME__, __LINE__, param, ##args)
-#define LOFATAL(param, args...) lolog::fatalex(__FILENAME__, __LINE__, param, ##args)
+#define LODEBUG(param, args...) lolog::debugex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOINFO(param, args...) lolog::infoex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOWARN(param, args...) lolog::warnex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOERROR(param, args...) lolog::errorex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOFATAL(param, args...) lolog::fatalex(__LOFILENAME__, __LINE__, param, ##args)
 

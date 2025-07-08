@@ -9,11 +9,17 @@
 
 #include <string>
 #include <sstream>
+// fmt
+#define FMT_HEADER_ONLY
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/printf.h>
+#include <fmt/xchar.h>
 
 #ifdef __linux
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __LOFILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #else
-#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#define __LOFILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #endif
 
 namespace lolog {
@@ -27,53 +33,32 @@ namespace lolog {
     //LogTypeDateTime = 0, LogTypeDate = 1, LogTypeAutoIncSn = 2
     void set_log_formate(int);
 
+    template <typename... Args>
+    void debug(const char *fmt, Args... args);
+    template <typename... Args>
+    void info(const char *fmt, Args... args);
+    template <typename... Args>
+    void warn(const char *fmt, Args... args);
+    template <typename... Args>
+    void error(const char *fmt, Args... args);
+    template <typename... Args>
+    void fatal(const char *fmt, Args... args);
 
-    void debug(const char *fmt, ...);
-    void info(const char *fmt, ...);
-    void warn(const char *fmt, ...);
-    void error(const char *fmt, ...);
-    void fatal(const char *fmt, ...);
-
-    void debugex(const char *file_name, int line, const char *fmt, ...);
-    void infoex(const char *file_name, int line, const char *fmt, ...);
-    void warnex(const char *file_name, int line, const char *fmt, ...);
-    void errorex(const char *file_name, int line, const char *fmt, ...);
-    void fatalex(const char *file_name, int line, const char *fmt, ...);
-
-#define DEBUGEX(param, args...) lolog::debugex(__FILENAME__, __LINE__, param, ##args)
-#define INFOEX(param, args...) lolog::infoex(__FILENAME__, __LINE__, param, ##args)
-#define WARNEX(param, args...) lolog::warnex(__FILENAME__, __LINE__, param, ##args)
-#define ERROREX(param, args...) lolog::errorex(__FILENAME__, __LINE__, param, ##args)
-#define FATALEX(param, args...) lolog::fatalex(__FILENAME__, __LINE__, param, ##args)
-
-    class LogMessage {
-    public:
-        LogMessage(const char *file, int line, int log_level);
-        ~LogMessage();
-        std::stringstream &stream() { return m_stream; }
-    private:
-        // The real data is cached thread-locally.
-        std::stringstream m_stream;
-        int m_log_level = 0;
-    };
-
-    class LogMessageVoidify {
-    public:
-        LogMessageVoidify() {}
-        // This has to be an operator with a precedence lower than << but
-        // higher than ?:
-        void operator&(std::ostream &os) {}
-    };
+    template <typename... Args>
+    void debugex(const char *file_name, int line, const char *fmt, Args... args);
+    template <typename... Args>
+    void infoex(const char *file_name, int line, const char *fmt, Args... args);
+    template <typename... Args>
+    void warnex(const char *file_name, int line, const char *fmt, Args... args);
+    template <typename... Args>
+    void errorex(const char *file_name, int line, const char *fmt, Args... args);
+    template <typename... Args>
+    void fatalex(const char *file_name, int line, const char *fmt, Args... args);
 }
-#define LOCOMPACT_LOG_EX(ClassName, severity, ...) \
-    ClassName(__FILE__, __LINE__, severity, ##__VA_ARGS__)
-#define LOLOG_STREAM(severity) LOCOMPACT_LOG_EX(lolog::LogMessage, severity).stream()
-#define LOLAZY_STREAM(stream) \
-    lolog::LogMessageVoidify() & (stream)
-#define LODEBUG() LOLAZY_STREAM(LOLOG_STREAM(4))
-#define LOINFO() LOLAZY_STREAM(LOLOG_STREAM(3))
-#define LOWARN() LOLAZY_STREAM(LOLOG_STREAM(2))
-#define LOERROR() LOLAZY_STREAM(LOLOG_STREAM(1))
-#define LOFATAL() LOLAZY_STREAM(LOLOG_STREAM(0))
+#define LODEBUG(param, args...) lolog::debugex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOINFO(param, args...) lolog::infoex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOWARN(param, args...) lolog::warnex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOERROR(param, args...) lolog::errorex(__LOFILENAME__, __LINE__, param, ##args)
+#define LOFATAL(param, args...) lolog::fatalex(__LOFILENAME__, __LINE__, param, ##args)
 
 #endif //LOLOG_LOLOG_H
