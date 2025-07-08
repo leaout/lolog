@@ -138,10 +138,11 @@ vector<func> bench_funcs;
 
 void bench_lolog(){
     Stat stat;
-    LOINFO() << "test begin";
+    LOINFO("test begin") ;
     auto start = std::chrono::high_resolution_clock::now();
     for(int i = 0; i < 100000; ++i){
-        lolog::info("this is a info log ");
+        // lolog::info("this is a info log {}", i);
+        LOINFO("this is a info log {}",i);
         stat.finished_single_op();
     }
 

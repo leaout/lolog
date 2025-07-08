@@ -18,6 +18,12 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+// fmt
+#define FMT_HEADER_ONLY
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/printf.h>
+#include <fmt/xchar.h>
 
 namespace lolog {
 using namespace std;
@@ -597,45 +603,16 @@ public:
     void close_log_file() {
         if (m_file_log.is_open()) m_file_log.close();
     }
-
-    ULog &add_log(const char *pszFmt, ...) {
-        va_list argptr;
-
-        va_start(argptr, pszFmt);
-        add_logvar_list((char *)pszFmt, argptr);
-        va_end(argptr);
-
+    // fmt format
+    template <typename... Args>
+    ULog &add_log(const char *format, const Args &...args){
+        get_log_buffer_by_id(get_current_thread_id()).add(format, args...);
         return *this;
     }
 
-    ULog &add_logvar_list(char *pszFmt, va_list argptr) {
-        CThreadLogBuffer &thread_log_buffer = get_log_buffer_by_id(get_current_thread_id());
-        thread_log_buffer.add(pszFmt, argptr);
 
-        return *this;
-    }
-
-    ULog &operator<<(char *pszData) { return add_log("%s", pszData); }
-
-    ULog &operator<<(const char *pszData) { return add_log("%s", pszData); }
-
-    ULog &operator<<(string &strData) { return add_log("%s", strData.c_str()); }
-
-    ULog &operator<<(unsigned int nData) { return add_log("%d", nData); }
-
-    ULog &operator<<(unsigned long nData) { return add_log("%ld", nData); }
-
-    ULog &operator<<(char cData) { return add_log("%c", cData); }
-
-    ULog &operator<<(int nData) { return add_log("%d", nData); }
-
-    ULog &operator<<(long nData) { return add_log("%ld", nData); }
-
-    ULog &operator<<(long long nData) { return add_log("%lld", nData); }
-
-    ULog &operator<<(float fData) { return add_log("%f", fData); }
-
-    ULog &operator<<(double fData) { return add_log("%f", fData); }
+    template <class T>
+    ULog &operator<<(T data) { return add_log("{}", data); }
 
     ULog &flush() {
         CThreadLogBuffer &ThreadLogBuffer = get_log_buffer_by_id(get_current_thread_id());
@@ -683,7 +660,10 @@ private:
 
         bool operator==(long long llThread);
 
-        void add(const char *pszFmt, va_list argptr);
+        template <typename... Args>
+        void add(const char *format, const Args &...args){
+            m_current_log += fmt::format(format, args...);
+        }
 
         bool flush();
 
@@ -718,16 +698,9 @@ static ULog &date_time(ULog &lftLog) {
     return lftLog << szTime;
 }
 
-static ULog &pid(ULog &lftLog) {
-    std::ostringstream oss;
-    oss << std::this_thread::get_id();
-    std::string stid = oss.str();
-    return lftLog << std::stoul(stid);
-}
-
 extern ULog &kULog;
 
-ULog &kULog = ULog::get_instance();
+inline ULog &kULog = ULog::get_instance();
 
 ULog &ULog::get_instance() {
     static ULog instance;
@@ -834,16 +807,6 @@ ULog::CThreadLogBuffer::~CThreadLogBuffer() {
     m_circle_buffer = nullptr;
 }
 
-void ULog::CThreadLogBuffer::add(const char *pszFmt, va_list argptr) {
-    if (pszFmt != nullptr) {
-        char szBuf[10240] = {0};
-        int ret = vsnprintf(szBuf, 10240, pszFmt, argptr);
-        int size = ret > 10240 ? 10240 : ret;
-        m_current_log.append(szBuf, size);
-        //    m_strcurrent_log += szBuf;
-    }
-}
-
 bool ULog::CThreadLogBuffer::flush() {
     if (m_current_log.empty()) return true;
 
@@ -899,7 +862,8 @@ inline void set_log_level(std::string level) {
 
 inline void set_log_formate(int formate) { kULog.set_log_file_type((LogFileType)formate); }
 
-inline void debugex(const char *file_name, int line, const char *fmt, ...) {
+template <typename... Args>
+inline void debugex(const char *file_name, int line, const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Debug) return;
 
     if (g_color) {
@@ -908,13 +872,9 @@ inline void debugex(const char *file_name, int line, const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Debug)];
 
-    kULog << "[" << file_name << ":" << line << "] ";
+    kULog << fmt::format("[{}:{}] ", file_name, line);
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -922,7 +882,8 @@ inline void debugex(const char *file_name, int line, const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void infoex(const char *file_name, int line, const char *fmt, ...) {
+template <typename... Args>
+inline void infoex(const char *file_name, int line, const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Info) return;
 
     if (g_color) {
@@ -931,13 +892,9 @@ inline void infoex(const char *file_name, int line, const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Info)];
 
-    kULog << "[" << file_name << ":" << line << "] ";
+    kULog << fmt::format("[{}:{}] ", file_name, line);
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -945,7 +902,8 @@ inline void infoex(const char *file_name, int line, const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void warnex(const char *file_name, int line, const char *fmt, ...) {
+template <typename... Args>
+inline void warnex(const char *file_name, int line, const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Warn) return;
 
     if (g_color) {
@@ -954,13 +912,9 @@ inline void warnex(const char *file_name, int line, const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Warn)];
 
-    kULog << "[" << file_name << ":" << line << "] ";
+    kULog << fmt::format("[{}:{}] ", file_name, line);
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -968,7 +922,8 @@ inline void warnex(const char *file_name, int line, const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void errorex(const char *file_name, int line, const char *fmt, ...) {
+template <typename... Args>
+inline void errorex(const char *file_name, int line, const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Error) return;
 
     if (g_color) {
@@ -977,13 +932,9 @@ inline void errorex(const char *file_name, int line, const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Error)];
 
-    kULog << "[" << file_name << ":" << line << "] ";
+    kULog << fmt::format("[{}:{}] ", file_name, line);
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -991,7 +942,8 @@ inline void errorex(const char *file_name, int line, const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void fatalex(const char *file_name, int line, const char *fmt, ...) {
+template <typename... Args>
+inline void fatalex(const char *file_name, int line, const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Fatal) return;
 
     if (g_color) {
@@ -1000,13 +952,9 @@ inline void fatalex(const char *file_name, int line, const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Fatal)];
 
-    kULog << "[" << file_name << ":" << line << "] ";
+    kULog << fmt::format("[{}:{}] ", file_name, line);
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -1014,7 +962,8 @@ inline void fatalex(const char *file_name, int line, const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void debug(const char *fmt, ...) {
+template <typename... Args>
+inline void debug(const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Debug) return;
 
     if (g_color) {
@@ -1023,11 +972,7 @@ inline void debug(const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Debug)];
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -1035,7 +980,8 @@ inline void debug(const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void info(const char *fmt, ...) {
+template <typename... Args>
+inline void info(const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Info) return;
 
     if (g_color) {
@@ -1044,11 +990,7 @@ inline void info(const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Info)];
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -1056,7 +998,8 @@ inline void info(const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void warn(const char *fmt, ...) {
+template <typename... Args>
+inline void warn(const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Warn) return;
 
     if (g_color) {
@@ -1065,11 +1008,7 @@ inline void warn(const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Warn)];
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -1077,7 +1016,8 @@ inline void warn(const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void error(const char *fmt, ...) {
+template <typename... Args>
+inline void error(const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Error) return;
 
     if (g_color) {
@@ -1086,11 +1026,7 @@ inline void error(const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Error)];
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -1098,7 +1034,8 @@ inline void error(const char *fmt, ...) {
     kULog << endl;
 }
 
-inline void fatal(const char *fmt, ...) {
+template <typename... Args>
+inline void fatal(const char *fmt, Args... args) {
     if (g_log_level < LogLevel::Fatal) return;
 
     if (g_color) {
@@ -1107,11 +1044,7 @@ inline void fatal(const char *fmt, ...) {
 
     kULog << date_time << g_log_level_def[toUType(LogLevel::Fatal)];
 
-    va_list argptr;
-
-    va_start(argptr, fmt);
-    kULog.add_logvar_list((char *)fmt, argptr);
-    va_end(argptr);
+    kULog.add_log(fmt, args...);
 
     if (g_color) {
         kULog.reset_color();
@@ -1125,67 +1058,11 @@ inline void fatal(const char *fmt, ...) {
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #endif
 
-#define DEBUGEX(param, args...) lolog::debugex(__FILENAME__, __LINE__, param, ##args)
-#define INFOEX(param, args...) lolog::infoex(__FILENAME__, __LINE__, param, ##args)
-#define WARNEX(param, args...) lolog::warnex(__FILENAME__, __LINE__, param, ##args)
-#define ERROREX(param, args...) lolog::errorex(__FILENAME__, __LINE__, param, ##args)
-#define FATALEX(param, args...) lolog::fatalex(__FILENAME__, __LINE__, param, ##args)
-
-class LogMessage {
-public:
-    LogMessage(const char *file, int line, int log_level) {
-        m_log_level = log_level;
-        if ((toUType(g_log_level) >= m_log_level) && g_print_line) m_stream << "[" << file << ":" << line << "] ";
-    }
-    ~LogMessage() {
-        if (toUType(g_log_level) >= m_log_level) {
-            switch ((LogLevel)m_log_level) {
-                case LogLevel::Debug: {
-                    debug("%s", m_stream.str().c_str());
-                    break;
-                }
-                case LogLevel::Info: {
-                    info("%s", m_stream.str().c_str());
-                    break;
-                }
-                case LogLevel::Warn: {
-                    warn("%s", m_stream.str().c_str());
-                    break;
-                }
-                case LogLevel::Error: {
-                    error("%s", m_stream.str().c_str());
-                    break;
-                }
-                case LogLevel::Fatal: {
-                    fatal("%s", m_stream.str().c_str());
-                    break;
-                }
-            }
-        }
-    }
-    std::stringstream &stream() { return m_stream; }
-
-private:
-    // The real data is cached thread-locally.
-    std::stringstream m_stream;
-    int m_log_level = 0;
-};
-
-class LogMessageVoidify {
-public:
-    LogMessageVoidify() {}
-    // This has to be an operator with a precedence lower than << but
-    // higher than ?:
-    void operator&(std::ostream &os) {}
-};
-
 } // namespace lolog
 
-#define LOCOMPACT_LOG_EX(ClassName, severity, ...) ClassName(__FILE__, __LINE__, severity, ##__VA_ARGS__)
-#define LOLOG_STREAM(severity) LOCOMPACT_LOG_EX(lolog::LogMessage, severity).stream()
-#define LOLAZY_STREAM(stream) lolog::LogMessageVoidify() & (stream)
-#define LODEBUG() LOLAZY_STREAM(LOLOG_STREAM(4))
-#define LOINFO() LOLAZY_STREAM(LOLOG_STREAM(3))
-#define LOWARN() LOLAZY_STREAM(LOLOG_STREAM(2))
-#define LOERROR() LOLAZY_STREAM(LOLOG_STREAM(1))
-#define LOFATAL() LOLAZY_STREAM(LOLOG_STREAM(0))
+#define LODEBUG(param, args...) lolog::debugex(__FILENAME__, __LINE__, param, ##args)
+#define LOINFO(param, args...) lolog::infoex(__FILENAME__, __LINE__, param, ##args)
+#define LOWARN(param, args...) lolog::warnex(__FILENAME__, __LINE__, param, ##args)
+#define LOERROR(param, args...) lolog::errorex(__FILENAME__, __LINE__, param, ##args)
+#define LOFATAL(param, args...) lolog::fatalex(__FILENAME__, __LINE__, param, ##args)
+

@@ -21,6 +21,7 @@ find_package(Threads)
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/include)
 link_directories(${CMAKE_BINARY_DIR})
 aux_source_directory(./bench DIR_BENCH)
 add_executable(bench ${DIR_BENCH})
