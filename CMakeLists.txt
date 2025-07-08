@@ -1,9 +1,16 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 
 set(PROJECT_NAME lolog)
 project(${PROJECT_NAME})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+
+set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation directory")
+
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/lolog")  
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 file(GLOB_RECURSE HEADERS *.h)
 source_group("Header Files" FILES ${HEADERS})

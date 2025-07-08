@@ -40,11 +40,11 @@ namespace lolog {
     void errorex(const char *file_name, int line, const char *fmt, ...);
     void fatalex(const char *file_name, int line, const char *fmt, ...);
 
-#define DEBUGEX(param, args...) debugex(__FILENAME__,__LINE__, param, ##args)
-#define INFOEX(param, args...) infoex(__FILENAME__,__LINE__, param, ##args)
-#define WARNEX(param, args...) warnex(__FILENAME__,__LINE__, param, ##args)
-#define ERROREX(param, args...) errorex(__FILENAME__,__LINE__, param, ##args)
-#define FATALEX(param, args...) fatalex(__FILENAME__,__LINE__, param, ##args)
+#define DEBUGEX(param, args...) lolog::debugex(__FILENAME__, __LINE__, param, ##args)
+#define INFOEX(param, args...) lolog::infoex(__FILENAME__, __LINE__, param, ##args)
+#define WARNEX(param, args...) lolog::warnex(__FILENAME__, __LINE__, param, ##args)
+#define ERROREX(param, args...) lolog::errorex(__FILENAME__, __LINE__, param, ##args)
+#define FATALEX(param, args...) lolog::fatalex(__FILENAME__, __LINE__, param, ##args)
 
     class LogMessage {
     public:
@@ -64,19 +64,16 @@ namespace lolog {
         // higher than ?:
         void operator&(std::ostream &os) {}
     };
-#define COMPACT_LOG_EX(ClassName, severity, ...)  \
-    ClassName(__FILE__, __LINE__,severity            \
-     ,##__VA_ARGS__)
-#define LOG_STREAM(severity) COMPACT_LOG_EX(LogMessage,severity).stream()
-#define LAZY_STREAM(stream)                            \
-            LogMessageVoidify() & (stream)
-#define LODEBUG()   LAZY_STREAM(LOG_STREAM(4))
-#define LOINFO()    LAZY_STREAM(LOG_STREAM(3))
-#define LOWARN()    LAZY_STREAM(LOG_STREAM(2))
-#define LOERROR()   LAZY_STREAM(LOG_STREAM(1))
-#define LOFATAL()   LAZY_STREAM(LOG_STREAM(0))
 }
-
-
+#define LOCOMPACT_LOG_EX(ClassName, severity, ...) \
+    ClassName(__FILE__, __LINE__, severity, ##__VA_ARGS__)
+#define LOLOG_STREAM(severity) LOCOMPACT_LOG_EX(lolog::LogMessage, severity).stream()
+#define LOLAZY_STREAM(stream) \
+    lolog::LogMessageVoidify() & (stream)
+#define LODEBUG() LOLAZY_STREAM(LOLOG_STREAM(4))
+#define LOINFO() LOLAZY_STREAM(LOLOG_STREAM(3))
+#define LOWARN() LOLAZY_STREAM(LOLOG_STREAM(2))
+#define LOERROR() LOLAZY_STREAM(LOLOG_STREAM(1))
+#define LOFATAL() LOLAZY_STREAM(LOLOG_STREAM(0))
 
 #endif //LOLOG_LOLOG_H

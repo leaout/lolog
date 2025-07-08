@@ -14,7 +14,7 @@
 #include "include/Lolog-Inl.h"
 
 using namespace std;
-using namespace lolog;
+// using namespace lolog;
 
 class BenchMark {
 public:
@@ -23,8 +23,8 @@ public:
     }
 
     void init() {
-        init_logging("test.log",5,200<<20);
-        set_log_level("Info");
+        lolog::init_logging("test.log", 5, 200 << 20);
+        lolog::set_log_level("Info");
     }
 
     ~BenchMark() {
@@ -138,9 +138,8 @@ vector<func> bench_funcs;
 
 void bench_lolog(){
     Stat stat;
-
+    LOINFO() << "test begin";
     auto start = std::chrono::high_resolution_clock::now();
-
     for(int i = 0; i < 100000; ++i){
         lolog::info("this is a info log ");
         stat.finished_single_op();
