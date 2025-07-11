@@ -19,25 +19,20 @@ int main(int argc, char* argv[]){
     lolog::init_logging(argv[0],5,200<<20);
     lolog::set_log_level("Debug");
 
-    debug("this is debug");
-    DEBUGEX("this is debug");
-    LODEBUG() <<"this is macro debug";
+    debug("this is debug : {}",888);
+    LODEBUG("this is macro debug : {}",888);
 
-    info("this is info");
-    INFOEX("this is info");
-    LOINFO() <<"this is macro info";
+    info("this is info : {}",123);
+    LOINFO("this is macro info : {}",123) ;
 
-    warn("this is warn");
-    WARNEX("this is warn");
-    LOWARN() <<"this is macro warn";
+    warn("this is warn : {}","123");
+    LOWARN("this is warn : {}","123");
 
-    error("this is error");
-    ERROREX("this is error");
-    LOERROR()<< "this is macro error";
+    error("this is error : {}",888);
+    LOERROR("this is error : {}",888);
 
-    fatal("this is fatal");
-    FATALEX("this is fatal");
-    LOFATAL() << "this is macro fatal";
+    fatal("this is fatal : {}",888);
+    LOFATAL("this is fatal : {}",888);
     return 0;
 }
 
@@ -90,10 +85,6 @@ int main(int argc, char* argv[]) {
     lolog::set_color(true);
 
     debug("this is debug");
-    INFO("this is info");
-    WARN("this is warn");
-    ERROR("this is error");
-    FATAL("this is fatal");
     return 0;
 }
 ```
@@ -111,10 +102,6 @@ int main(int argc, char* argv[]) {
     lolog::set_log_formate(0);
 
     debug("this is debug");
-    INFO("this is info");
-    WARN("this is warn");
-    ERROR("this is error");
-    FATAL("this is fatal");
     return 0;
 }
 ```
