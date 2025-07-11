@@ -12,7 +12,7 @@ make insall
 ## Examples
 ### Basic usage
 ```c++
-#include "Lolog.h"
+#include "Lolog-Inl.h"
 using namespace lolog;
 
 int main(int argc, char* argv[]){
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]){
 ```
 ### Set stdout print
 ```c++
-#include "Lolog.h"
+#include "Lolog-Inl.h"
 using namespace lolog;
 
 int main(int argc, char* argv[]) {
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 ```
 ### Set print source code line
 ```c++
-#include "Lolog.h"
+#include "Lolog-Inl.h"
 using namespace lolog;
 
 int main(int argc, char* argv[]) {
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
 ```
 ### Set color 
 ```c++
-#include "Lolog.h"
+#include "Lolog-Inl.h"
 using namespace lolog;
 
 int main(int argc, char* argv[]) {
@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 ![image](color.jpg)  
 ### Set log file name format
 ```c++
-#include "Lolog.h"
+#include "Lolog-Inl.h"
 using namespace lolog;
 
 int main(int argc, char* argv[]) {
