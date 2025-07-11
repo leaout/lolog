@@ -126,7 +126,7 @@ public:
     bool is_continuous_data_len(size_t count) { return m_head + count < m_tail_address; }
 
     size_t read(char *dest, long count) {
-        if (get_used_buff_len() < count) return 0;
+        if (get_used_buff_len() < static_cast<size_t>(count)) return 0;
 
         if (m_is_reading_data || count <= 0) return 0;
 
@@ -166,7 +166,7 @@ public:
     bool write(const char *src, long count) {
         if (m_is_writing_data || count <= 0) return false;
 
-        if (count > get_available_buff_len()) return false;
+        if (static_cast<size_t>(count) > get_available_buff_len()) return false;
 
         m_is_writing_data = true;
 
@@ -205,7 +205,7 @@ public:
     bool dec_data_len(long count) {
         if (count <= 0) return false;
 
-        size_t data_len = get_used_buff_len();
+        long data_len = get_used_buff_len();
         if (count > data_len) count = data_len;
 
         m_head += count;
@@ -329,12 +329,12 @@ public:
 
         if (0 == circle_buffer->memcmp(&MSG_TAG, sizeof(int))) {
             circle_buffer->memcpy((char *)msg, head_len);
-            if (msg->len <= 0 || msg->len > max_expected_len - head_len) {
+            if (msg->len <= 0 || msg->len > static_cast<int>(max_expected_len - head_len)) {
                 circle_buffer->dec_data_len(1);
                 return false;
             }
 
-            if (circle_buffer->get_used_buff_len() < head_len + msg->len) {
+            if (circle_buffer->get_used_buff_len() < static_cast<size_t>(head_len + msg->len)) {
                 return false;
             }
 
@@ -365,7 +365,7 @@ public:
     }
 
     bool write(const char *data, int type, size_t count, CircleBuffer *circle_buffer) {
-        MsgDef msg_head = {MSG_TAG, type, int(count + sizeof(int))};
+        MsgDef msg_head = {MSG_TAG, type, int(count + sizeof(int)),{}};
 
         if (circle_buffer->get_available_buff_len() < msg_head.len + sizeof(MsgDef)) return false;
 
@@ -469,7 +469,7 @@ constexpr auto toUType(E enumerator) noexcept {
     return static_cast<std::underlying_type_t<E>>(enumerator);
 }
 
-std::string exec(const char *cmd) {
+inline std::string exec(const char *cmd) {
     std::array<char, 128> buffer;
     std::string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
@@ -482,7 +482,7 @@ std::string exec(const char *cmd) {
     return result;
 }
 
-string get_path(const string full_file_path) {
+inline string get_path(const string full_file_path) {
     std::string::size_type npos = full_file_path.rfind("/");
     if (npos == std::string::npos) {
         return "./";
@@ -584,7 +584,7 @@ public:
         string cmd = "cd " + path + " && rm -f `ls -t *.log | awk 'NR>" + to_string(m_log_remain_counts) + "'`";
         try {
             exec(cmd.data());
-        } catch (exception e) {
+        } catch (const std::exception& e) {
         }
 #endif
         locale::global(locale(""));
@@ -622,11 +622,21 @@ public:
 
     ULog &operator<<(ULog &(*op)(ULog &)) { return (*op)(*this); }
 
-    static ULog &get_instance();
+    static ULog &get_instance(){
+        static ULog instance;
 
-    void set_color(ColorCode code);
+        return instance;
+    }
 
-    void reset_color();
+    void set_color(ColorCode code){
+        string color = "\033[" + to_string((int)code) + "m";
+        *this << color;
+    }
+
+    void reset_color(){
+        string color = "\033[0m";
+        *this << color;
+    }
 
 public:
     bool m_std_out;
@@ -651,20 +661,44 @@ private:
 private:
     class CThreadLogBuffer {
     public:
-        CThreadLogBuffer(long long llThread);
+        CThreadLogBuffer(long long llThread){
+            m_thread_id = llThread;
+            m_circle_buffer = new CircleBuffer(1024 * 1024 * 5, "thread_buffer");
+        }
 
-        ~CThreadLogBuffer();
+        ~CThreadLogBuffer()
+        {
+            delete m_circle_buffer;
+            m_circle_buffer = nullptr;
+        }
 
-        bool operator==(CThreadLogBuffer &ThreadLogBuffer);
+        bool flush(){
+            if (m_current_log.empty())
+                return true;
 
-        bool operator==(long long llThread);
+            LyMsg msg;
+            if (msg.write(m_current_log.c_str(), 999, m_current_log.size(), m_circle_buffer))
+            {
+                m_current_log.erase();
+                return true;
+            }
+
+            return false;
+        }
+
+        bool operator==(CThreadLogBuffer &ThreadLogBuffer) { 
+            return this->m_thread_id == ThreadLogBuffer.m_thread_id; 
+        }
+
+        bool operator==(long long llThread) { 
+            return this->m_thread_id == llThread; 
+        }
+
 
         template <typename... Args>
         void add(const char *format, const Args &...args){
             m_current_log += fmt::format(format, args...);
         }
-
-        bool flush();
 
     public:
         string m_current_log;
@@ -675,9 +709,96 @@ private:
 private:
     std::mutex m_mutex_buffer;
 
-    CThreadLogBuffer &get_log_buffer_by_id(long long thread_id);
+    CThreadLogBuffer &get_log_buffer_by_id(long long thread_id){
+        auto find_it = m_thread_log_buffer.find(thread_id);
+        if (find_it != m_thread_log_buffer.end())
+        {
+            return *(find_it->second);
+        }
+        std::lock_guard<mutex> lock(m_mutex_buffer);
+        auto log_buffer_ptr = new CThreadLogBuffer(thread_id);
+        m_thread_log_buffer.insert(std::make_pair(thread_id, log_buffer_ptr));
 
-    void save_log_file();
+        return *(log_buffer_ptr);
+    }
+
+    void save_log_file(){
+        MsgDef *pMsg = (MsgDef *)new char[1024 * 500];
+        LyMsg msg_head;
+
+        int nLogCount = 0;
+
+        map<long long, bool> large_log_mark;
+
+        while (m_is_running)
+        {
+            if (m_thread_log_buffer.empty())
+            {
+                std::this_thread::sleep_for(chrono::microseconds(100));
+                continue;
+            }
+
+            nLogCount = 0;
+
+            for (auto log_buffer : m_thread_log_buffer)
+            {
+                CircleBuffer *pCircleBuffer = log_buffer.second->m_circle_buffer;
+
+                if (msg_head.read(pCircleBuffer, pMsg, 1024 * 400))
+                {
+                    if (m_buffer_send)
+                    {
+                        msg_head.write(pMsg->data, pMsg->type, pMsg->len, m_buffer_send);
+                    }
+
+                    pMsg->data[pMsg->len] = '\0';
+
+                    ++nLogCount;
+                    if (m_file_log.is_open())
+                    {
+                        m_file_log.write(pMsg->data, pMsg->len);
+                        m_file_log.flush();
+                    }
+
+                    if (m_std_out)
+                    {
+                        // print scream
+                        int nDataBufferLen = pCircleBuffer->get_used_buff_len();
+                        if (nDataBufferLen <= 1024 * 100)
+                        {
+                            fwrite(pMsg->data, sizeof(char), pMsg->len, stderr);
+                            large_log_mark[log_buffer.second->m_thread_id] = false;
+                        }
+                        else
+                        {
+                            if (!large_log_mark[log_buffer.second->m_thread_id])
+                                fprintf(stderr, "thread[%lld] log buffer size[%d] > 100K, do not write it on screen.", log_buffer.second->m_thread_id, nDataBufferLen);
+
+                            large_log_mark[log_buffer.second->m_thread_id] = true;
+                        }
+                    }
+
+                    if ((m_log_file_type == LogFileType::AutoIncSn || m_log_file_type == LogFileType::DateTime) && (m_file_log.tellp() > m_inc_log_size))
+                    {
+                        m_file_log.close();
+                        if (m_log_list.size() >= static_cast<size_t>(m_log_remain_counts))
+                        {
+                            remove(m_log_list.front().c_str());
+                            m_log_list.pop_front();
+                        }
+                        string log_file_name = get_log_file_name();
+                        m_file_log.open(log_file_name.c_str(), ios::binary | ios::trunc);
+                        m_log_list.emplace_back(log_file_name);
+                    }
+                }
+            }
+
+            if (nLogCount == 0)
+            {
+                std::this_thread::sleep_for(chrono::microseconds(100));
+            }
+        }
+    }
 
 private:
     //
@@ -701,132 +822,11 @@ extern ULog &kULog;
 
 inline ULog &kULog = ULog::get_instance();
 
-ULog &ULog::get_instance() {
-    static ULog instance;
+inline char g_log_level_def[][32] = {"[fatal] ", "[error] ", "[warn] ", "[info] ", "[debug] "};
 
-    return instance;
-}
-
-ULog::CThreadLogBuffer &ULog::get_log_buffer_by_id(long long thread_id) {
-    auto find_it = m_thread_log_buffer.find(thread_id);
-    if (find_it != m_thread_log_buffer.end()) {
-        return *(find_it->second);
-    }
-    std::lock_guard<mutex> lock(m_mutex_buffer);
-    auto log_buffer_ptr = new CThreadLogBuffer(thread_id);
-    m_thread_log_buffer.insert(std::make_pair(thread_id, log_buffer_ptr));
-
-    return *(log_buffer_ptr);
-}
-
-void ULog::save_log_file() {
-    MsgDef *pMsg = (MsgDef *)new char[1024 * 500];
-    LyMsg msg_head;
-
-    int nLogCount = 0;
-
-    map<long long, bool> large_log_mark;
-
-    while (m_is_running) {
-        if (m_thread_log_buffer.empty()) {
-            std::this_thread::sleep_for(chrono::microseconds(100));
-            continue;
-        }
-
-        nLogCount = 0;
-
-        for (auto log_buffer : m_thread_log_buffer) {
-            CircleBuffer *pCircleBuffer = log_buffer.second->m_circle_buffer;
-
-            if (msg_head.read(pCircleBuffer, pMsg, 1024 * 400)) {
-                if (m_buffer_send) {
-                    msg_head.write(pMsg->data, pMsg->type, pMsg->len, m_buffer_send);
-                }
-
-                pMsg->data[pMsg->len] = '\0';
-
-                ++nLogCount;
-                if (m_file_log.is_open()) {
-                    m_file_log.write(pMsg->data, pMsg->len);
-                    m_file_log.flush();
-                }
-
-                if (m_std_out) {
-                    // print scream
-                    int nDataBufferLen = pCircleBuffer->get_used_buff_len();
-                    if (nDataBufferLen <= 1024 * 100) {
-                        fwrite(pMsg->data, sizeof(char), pMsg->len, stderr);
-                        large_log_mark[log_buffer.second->m_thread_id] = false;
-                    } else {
-                        if (!large_log_mark[log_buffer.second->m_thread_id])
-                            fprintf(stderr, "thread[%lld] log buffer size[%d] > 100K, do not write it on screen.", log_buffer.second->m_thread_id, nDataBufferLen);
-
-                        large_log_mark[log_buffer.second->m_thread_id] = true;
-                    }
-                }
-
-                if ((m_log_file_type == LogFileType::AutoIncSn || m_log_file_type == LogFileType::DateTime) && (m_file_log.tellp() > m_inc_log_size)) {
-                    m_file_log.close();
-                    if (m_log_list.size() >= m_log_remain_counts) {
-                        remove(m_log_list.front().c_str());
-                        m_log_list.pop_front();
-                    }
-                    string log_file_name = get_log_file_name();
-                    m_file_log.open(log_file_name.c_str(), ios::binary | ios::trunc);
-                    m_log_list.emplace_back(log_file_name);
-                }
-            }
-        }
-
-        if (nLogCount == 0) {
-            std::this_thread::sleep_for(chrono::microseconds(100));
-        }
-    }
-}
-
-void ULog::set_color(ColorCode code) {
-    string color = "\033[" + to_string((int)code) + "m";
-    *this << color;
-}
-
-void ULog::reset_color() {
-    string color = "\033[0m";
-    *this << color;
-}
-
-//////////////////////////////////////////////////////////////////////////
-
-ULog::CThreadLogBuffer::CThreadLogBuffer(long long llThread) {
-    m_thread_id = llThread;
-    m_circle_buffer = new CircleBuffer(1024 * 1024 * 5, "thread_buffer");
-}
-
-ULog::CThreadLogBuffer::~CThreadLogBuffer() {
-    delete m_circle_buffer;
-    m_circle_buffer = nullptr;
-}
-
-bool ULog::CThreadLogBuffer::flush() {
-    if (m_current_log.empty()) return true;
-
-    LyMsg msg;
-    if (msg.write(m_current_log.c_str(), 999, m_current_log.size(), m_circle_buffer)) {
-        m_current_log.erase();
-        return true;
-    }
-
-    return false;
-}
-
-bool ULog::CThreadLogBuffer::operator==(CThreadLogBuffer &ThreadLogBuffer) { return this->m_thread_id == ThreadLogBuffer.m_thread_id; }
-
-bool ULog::CThreadLogBuffer::operator==(long long llThread) { return this->m_thread_id == llThread; }
-
-char g_log_level_def[][32] = {"[fatal] ", "[error] ", "[warn] ", "[info] ", "[debug] "};
-
-LogLevel g_log_level = LogLevel::Error;
-bool g_color = false;
-bool g_print_line = false;
+inline LogLevel g_log_level = LogLevel::Error;
+inline bool g_color = false;
+inline bool g_print_line = false;
 
 inline void init_logging(const char *log_path_name, int log_remain_counts, int log_file_size) {
     kULog.open_log_file(log_path_name);

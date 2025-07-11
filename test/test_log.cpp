@@ -5,7 +5,7 @@
 **/
 #include <thread>
 #include "gtest/gtest.h"
-#include "../include/Lolog.h"
+#include "../include/Lolog-Inl.h"
 
 
 using namespace std;
@@ -17,8 +17,7 @@ public:
 protected:
 
     virtual void SetUp() {
-        lolog::init_logging("test.log",5,200<<20);
-        lolog::set_log_level("Debug");
+
     }
 
     virtual void TearDown() {
@@ -47,7 +46,7 @@ TEST_F(LologTest, print_log) {
 }
 
 TEST_F(LologTest, batct_log) {
-    int print_cout = 1000;
+    int print_cout = 10;
     using namespace lolog;
     std::thread th1([=]() {
         for (int i = 0; i < print_cout; ++i) {

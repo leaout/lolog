@@ -14,11 +14,8 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 file(GLOB_RECURSE HEADERS *.h)
 source_group("Header Files" FILES ${HEADERS})
-aux_source_directory(./src DIR_SRCS)
-add_library(${PROJECT_NAME} SHARED ${DIR_SRCS} ${HEADERS})
 
 find_package(Threads)
-target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -31,12 +28,3 @@ find_package(GTest)
 if(GTest_FOUND)
     add_subdirectory(test)
 endif()
-
-#install
-set(CMAKE_INSTALL_RPATH "")
-set(INSTALL_HEAD_FILES include/Lolog.h)
-install(FILES ${INSTALL_HEAD_FILES} DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
-INSTALL(TARGETS ${PROJECT_NAME}
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        )
